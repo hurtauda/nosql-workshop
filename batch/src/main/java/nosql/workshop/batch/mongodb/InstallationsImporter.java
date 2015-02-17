@@ -38,8 +38,8 @@ public class InstallationsImporter {
                 .split("\",\"");
 
         BasicDBList coordinates = new BasicDBList();
-        coordinates.add(columns[9]);
-        coordinates.add(columns[10]);
+        coordinates.add(Double.parseDouble((columns[9] == null || columns[9].isEmpty()) ? "0" : columns[9]));
+        coordinates.add(Double.parseDouble((columns[10] == null || columns[10].isEmpty()) ? "0" : columns[10]));
         org.elasticsearch.common.joda.time.format.DateTimeFormatter parser = ISODateTimeFormat.date();
 
 

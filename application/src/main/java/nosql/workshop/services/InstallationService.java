@@ -2,9 +2,12 @@ package nosql.workshop.services;
 
 import com.google.inject.Inject;
 import nosql.workshop.model.Installation;
+import nosql.workshop.model.stats.Average;
 import nosql.workshop.model.stats.CountByActivity;
+import org.jongo.Aggregate;
 import org.jongo.MongoCollection;
 
+import java.lang.reflect.Array;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -80,8 +83,12 @@ public class InstallationService {
      * @return l'installation avec le plus d'équipements.
      */
     public Installation installationWithMaxEquipments() {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+
+        return this.installations.aggregate("{$project:{equipementscount:{$size:'$equipements'}, nom: 1, equipements: 1}}")
+                .and("{$sort:{'equipementscount': -1}}")
+                .and("{$limit: 1}")
+                .as(Installation.class)
+                .get(0);
     }
 
     /**
@@ -90,13 +97,19 @@ public class InstallationService {
      * @return le nombre d'installations par activité.
      */
     public List<CountByActivity> countByActivity() {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+        return this.installations.aggregate("{$unwind: '$equipements'}")
+                .and("{$unwind: '$equipements.activites'}")
+                .and("{$group: {_id: '$equipements.activites', total: {$sum: 1}}}")
+                .and("{$project: {_id: 0, activite: '$_id', total: 1}}")
+                .as(CountByActivity.class);
     }
 
     public double averageEquipmentsPerInstallation() {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+        return this.installations.aggregate("{$group: {_id: null, average : {$avg: {$size:'$equipements'}}}}")
+                .and("{$project: {_id: 0, average: 1}}")
+                .as(Average.class)
+                .get(0)
+                .getAverage();
     }
 
     /**
@@ -106,8 +119,12 @@ public class InstallationService {
      * @return les résultats correspondant à la requête.
      */
     public List<Installation> search(String searchQuery) {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+        ArrayList<Installation> installs = new ArrayList<>();
+        Iterator<Installation> i = this.installations.find(searchQuery).as(Installation.class);
+        while(i.hasNext()){
+            installs.add(i.next());
+        }
+        return installs;
     }
 
     /**
@@ -119,7 +136,8 @@ public class InstallationService {
      * @return les installations dans la zone géographique demandée.
      */
     public List<Installation> geosearch(double lat, double lng, double distance) {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+        this.installations.ensureIndex("{'location': '2dsphere'}");
+        String query = "{'location': {$near: {$geometry: {type: 'Point', coordinates : [" + lng + "," + lat + "]}, $maxDistance: " + distance + "}}}";
+        return search(query);
     }
 }

@@ -1,6 +1,10 @@
 package nosql.workshop.batch.mongodb;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
+import org.elasticsearch.index.analysis.CharMatcher;
 
 import java.io.*;
 
@@ -14,8 +18,8 @@ public class EquipementsImporter {
 
     public void run() {
         InputStream is = CsvToMongoDb.class.getResourceAsStream("/csv/equipements.csv");
-
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+
             reader.lines()
                     .skip(1)
                     .filter(line -> line.length() > 0)
@@ -30,6 +34,22 @@ public class EquipementsImporter {
 
         String installationId = columns[2];
 
-        // TODO codez la mise à jour de l'installation pour ajouter ses équipements
+        BasicDBObject query = new BasicDBObject();
+        query.append("_id", installationId);
+
+        BasicDBObject equipement = new BasicDBObject()
+                .append("numero", columns[4])
+                .append("nom", columns[5])
+                .append("type", columns[7])
+                .append("famille", columns[9]);
+
+        BasicDBObject equipements = new BasicDBObject();
+        equipements.append("equipements", equipement);
+
+        BasicDBObject push = new BasicDBObject();
+        push.append("$push", equipements);
+
+
+        this.installationsCollection.update(query, push);
     }
 }

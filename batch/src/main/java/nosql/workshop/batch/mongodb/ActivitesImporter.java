@@ -1,5 +1,7 @@
 package nosql.workshop.batch.mongodb;
 
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 
 import java.io.*;
@@ -34,7 +36,19 @@ public class ActivitesImporter {
         if (columns.length >= 6) {
             String equipementId = columns[2].trim();
 
-            // TODO codez la mise à jour de l'installation pour rattacher les activités à ses équipements
+            BasicDBObject equipement = new BasicDBObject();
+            equipement.append("$elemMatch", new BasicDBObject("numero", equipementId));
+
+            BasicDBObject query = new BasicDBObject();
+            query.append("equipements", equipement);
+
+            BasicDBObject activites = new BasicDBObject();
+            activites.append("equipements.$.activites", columns[5]);
+
+            BasicDBObject push = new BasicDBObject();
+            push.append("$push", activites);
+
+            this.installationsCollection.update(query, push);
         }
     }
 }

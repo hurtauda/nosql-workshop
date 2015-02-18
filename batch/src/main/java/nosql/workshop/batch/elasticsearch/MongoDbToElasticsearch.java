@@ -43,7 +43,7 @@ public class MongoDbToElasticsearch {
                 String objectId = (String) object.get("_id");
                 object.removeField("dateMiseAJourFiche");
 
-                bulkRequest.add(elasticSearchClient.prepareIndex("installations", "installation", "1")
+                bulkRequest.add(elasticSearchClient.prepareIndex("installations", "installation", objectId)
                         .setSource(jsonBuilder()
                                 .startObject()
                                 .field(objectId, object)

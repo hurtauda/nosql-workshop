@@ -54,7 +54,7 @@ public class ImportTowns {
         Double[] coordinates = {longitude, latitude};
 
         try {
-            bulkRequest.add(elasticSearchClient.prepareIndex("towns", "town", "1")
+            bulkRequest.add(elasticSearchClient.prepareIndex("towns", "town")
                             .setSource(jsonBuilder()
                                             .startObject()
                                             .field("townName", townName)

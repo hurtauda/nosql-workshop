@@ -8,11 +8,15 @@ import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.checkIndexExists;
 import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.dealWithFailures;
@@ -22,8 +26,7 @@ import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.de
  */
 public class ImportTowns {
     public static void main(String[] args) throws IOException {
-        //TODO A retirer avant pull request
-        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "PSG").build();
+        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "elasticsearch").build();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(ImportTowns.class.getResourceAsStream("/csv/towns_paysdeloire.csv")));
              Client elasticSearchClient = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress("localhost", 9300))) {
@@ -38,7 +41,7 @@ public class ImportTowns {
                     .forEach(line -> insertTown(line, bulkRequest, elasticSearchClient));
 
             BulkResponse bulkItemResponses = bulkRequest.execute().actionGet();
-
+            System.out.println("C'est fini !");
             dealWithFailures(bulkItemResponses);
         }
 
@@ -53,18 +56,22 @@ public class ImportTowns {
         Double longitude = Double.valueOf(split[6]);
         Double latitude = Double.valueOf(split[7]);
         Double[] coordinates = {longitude, latitude};
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("townName", townName);
+        map.put("location", coordinates);
 
-        try {
-            bulkRequest.add(elasticSearchClient.prepareIndex("towns", "town")
-                            .setSource(jsonBuilder()
-                                            .startObject()
-                                            .field("townName", townName)
-                                            .field("location", coordinates)
-                                            .endObject()
-                            )
-            );
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Map<String, Object> subsubmap = new HashMap<String, Object>();
+        subsubmap.put("townName", townName);
+        subsubmap.put("location", coordinates);
+
+        Map<String, Object> submap = new HashMap<String, Object>();
+        submap.put("input", townName);
+        submap.put("output", townName);
+        submap.put("payload", subsubmap);
+        map.put("townNameSuggest", submap);
+        bulkRequest.add(elasticSearchClient.prepareIndex("towns", "town")
+                        .setSource(map)
+        );
+
     }
 }

@@ -5,6 +5,8 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
 
@@ -20,8 +22,10 @@ import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.de
  */
 public class ImportTowns {
     public static void main(String[] args) throws IOException {
+        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "PSG").build();
+
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(ImportTowns.class.getResourceAsStream("/csv/towns_paysdeloire.csv")));
-             Client elasticSearchClient = new TransportClient().addTransportAddress(new InetSocketTransportAddress("localhost", 9300))) {
+             Client elasticSearchClient = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress("localhost", 9300))) {
 
             checkIndexExists("towns", elasticSearchClient);
 
@@ -50,14 +54,14 @@ public class ImportTowns {
         Double[] coordinates = {longitude, latitude};
 
         try {
-            bulkRequest.add(elasticSearchClient.prepareIndex("twitter", "tweet", "1")
+            bulkRequest.add(elasticSearchClient.prepareIndex("towns", "town", "1")
                             .setSource(jsonBuilder()
                                             .startObject()
                                             .field("townName", townName)
                                             .field("location", coordinates)
-                                            .endObject()))
-                            .execute()
-                            .actionGet();
+                                            .endObject()
+                            )
+            );
         } catch (IOException e) {
             e.printStackTrace();
         }

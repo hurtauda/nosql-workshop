@@ -22,6 +22,7 @@ import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.de
  */
 public class ImportTowns {
     public static void main(String[] args) throws IOException {
+        //TODO A retirer avant pull request
         Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "PSG").build();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(ImportTowns.class.getResourceAsStream("/csv/towns_paysdeloire.csv")));

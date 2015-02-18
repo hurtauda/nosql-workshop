@@ -6,16 +6,25 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import nosql.workshop.model.Installation;
 import nosql.workshop.model.suggest.TownSuggest;
+import org.elasticsearch.action.search.SearchRequestBuilder;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- *
  * Created by Chris on 12/02/15.
  */
 public class SearchService {
@@ -33,7 +42,10 @@ public class SearchService {
 
     @Inject
     public SearchService(@Named(ES_HOST) String host, @Named(ES_TRANSPORT_PORT) int transportPort) {
-        elasticSearchClient = new TransportClient().addTransportAddress(new InetSocketTransportAddress(host, transportPort));
+        //TODO à retirer avant pull request
+        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "PSG").build();
+
+        elasticSearchClient = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(host, transportPort));
 
         objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -41,6 +53,7 @@ public class SearchService {
 
     /**
      * Recherche les installations à l'aide d'une requête full-text
+     *
      * @param searchQuery la requête
      * @return la listes de installations
      */
@@ -63,13 +76,26 @@ public class SearchService {
         }
     }
 
-    public List<TownSuggest> suggestTownName(String townName){
+    public List<TownSuggest> suggestTownName(String townName) {
         // TODO codez le service
         throw new UnsupportedOperationException();
     }
 
     public Double[] getTownLocation(String townName) {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+        SearchResponse response = elasticSearchClient.prepareSearch("towns")
+                .setTypes("town")
+                .setQuery(QueryBuilders.matchQuery("townName", townName))
+                .execute()
+                .actionGet();
+
+        SearchHits searchHits = response.getHits();
+        TownSuggest ts;
+        try {
+            ts = objectMapper.readValue(searchHits.getHits()[0].getSourceAsString(), TownSuggest.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return ts.getLocation();
     }
 }

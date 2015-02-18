@@ -26,6 +26,7 @@ public class MongoDbToElasticsearch {
         MongoClient mongoClient = null;
 
         long startTime = System.currentTimeMillis();
+        //TODO A retirer avant pull request
         Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "PSG").build();
         try (Client elasticSearchClient = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(ES_DEFAULT_HOST, ES_DEFAULT_PORT))){
             checkIndexExists("installations", elasticSearchClient);

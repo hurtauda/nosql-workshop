@@ -20,12 +20,11 @@ import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.suggest.Suggest;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
+import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by Chris on 12/02/15.
@@ -80,19 +79,27 @@ public class SearchService {
     }
 
     public List<TownSuggest> suggestTownName(String townName) {
-        SuggestResponse response = elasticSearchClient.prepareSuggest("towns")
-                .setSuggestText(townName)
-                .execute()
-                .actionGet();
+        CompletionSuggestionBuilder compBuilder = new CompletionSuggestionBuilder("towns");
+        compBuilder.text(townName);
+        compBuilder.field("townNameS");
+
+        SearchResponse searchResponse = elasticSearchClient.prepareSearch(TOWNS_INDEX)
+                .setTypes("completion")
+                .setQuery(QueryBuilders.matchAllQuery())
+                .addSuggestion(compBuilder)
+                .execute().actionGet();
+
+        CompletionSuggestion compSuggestion = searchResponse.getSuggest().getSuggestion("towns");
         List<TownSuggest> townSuggests =  new ArrayList<TownSuggest>();
-        SearchHit[] hits = response.getSuggest().getSuggestion("towns");
-        for(int i = 0; i<hits.length; i++) {
+        Iterator<CompletionSuggestion.Entry.Option> it = compSuggestion.iterator().next().getOptions().iterator();
+        while (it.hasNext()){
             try {
-                townSuggests.add(objectMapper.readValue(hits[i].getSourceAsString(), TownSuggest.class));
+                townSuggests.add(objectMapper.readValue(it.next().getPayloadAsString(), TownSuggest.class));
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
         return townSuggests;
 
     }

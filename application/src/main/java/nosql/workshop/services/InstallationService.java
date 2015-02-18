@@ -51,7 +51,7 @@ public class InstallationService {
     public List<Installation> list(int page, int pageSize) {
         ArrayList<Installation> installs = new ArrayList<>();
         Iterator<Installation> i = this.installations.find().skip(pageSize * (page - 1)).limit(pageSize).as(Installation.class);
-        while (i.hasNext()){
+        while (i.hasNext()) {
             installs.add(i.next());
         }
         return installs;
@@ -119,11 +119,9 @@ public class InstallationService {
      * @return les résultats correspondant à la requête.
      */
     public List<Installation> search(String searchQuery) {
-        ArrayList<Installation> installs = new ArrayList<>();
-        Iterator<Installation> i = this.installations.find(searchQuery).as(Installation.class);
-        while(i.hasNext()){
-            installs.add(i.next());
-        }
+        Iterable<Installation> iterable = installations.find("{$text: {$search: #}}", searchQuery).as(Installation.class);
+        List<Installation> installs = new ArrayList<>();
+        iterable.forEach(installs::add);
         return installs;
     }
 
@@ -137,7 +135,11 @@ public class InstallationService {
      */
     public List<Installation> geosearch(double lat, double lng, double distance) {
         this.installations.ensureIndex("{'location': '2dsphere'}");
-        String query = "{'location': {$near: {$geometry: {type: 'Point', coordinates : [" + lng + "," + lat + "]}, $maxDistance: " + distance + "}}}";
-        return search(query);
+        ArrayList<Installation> installs = new ArrayList<>();
+        Iterator<Installation> i = this.installations.find("{'location': {$near: {$geometry: {type: 'Point', coordinates : [" + lng + "," + lat + "]}, $maxDistance: " + distance + "}}}").as(Installation.class);
+        while (i.hasNext()) {
+            installs.add(i.next());
+        }
+        return installs;
     }
 }

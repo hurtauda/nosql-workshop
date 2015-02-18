@@ -6,13 +6,15 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
 
 import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.*;
+import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
 /**
  * Transferts les documents depuis MongoDB vers Elasticsearch.
@@ -24,7 +26,8 @@ public class MongoDbToElasticsearch {
         MongoClient mongoClient = null;
 
         long startTime = System.currentTimeMillis();
-        try (Client elasticSearchClient = new TransportClient().addTransportAddress(new InetSocketTransportAddress(ES_DEFAULT_HOST, ES_DEFAULT_PORT));){
+        Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", "PSG").build();
+        try (Client elasticSearchClient = new TransportClient(settings).addTransportAddress(new InetSocketTransportAddress(ES_DEFAULT_HOST, ES_DEFAULT_PORT))){
             checkIndexExists("installations", elasticSearchClient);
 
             mongoClient = new MongoClient();
@@ -32,8 +35,7 @@ public class MongoDbToElasticsearch {
             // cursor all database objects from mongo db
             DBCursor cursor = ElasticSearchBatchUtils.getMongoCursorToAllInstallations(mongoClient);
 
-            // TODO prepare bulk insert to Elastic Search
-            BulkRequestBuilder bulkRequest = null;
+            BulkRequestBuilder bulkRequest = elasticSearchClient.prepareBulk();
 
             while (cursor.hasNext()) {
                 DBObject object = cursor.next();
@@ -41,20 +43,25 @@ public class MongoDbToElasticsearch {
                 String objectId = (String) object.get("_id");
                 object.removeField("dateMiseAJourFiche");
 
-                // TODO codez l'écriture du document dans ES
+                bulkRequest.add(elasticSearchClient.prepareIndex("installations", "installation", "1")
+                        .setSource(jsonBuilder()
+                                .startObject()
+                                .field(objectId, object)
+                                .endObject()
+                        )
+                );
             }
             BulkResponse bulkItemResponses = bulkRequest.execute().actionGet();
 
             dealWithFailures(bulkItemResponses);
 
             System.out.println("Inserted all documents in " + (System.currentTimeMillis() - startTime) + " ms");
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
             if (mongoClient != null) {
                 mongoClient.close();
             }
         }
-
-
     }
-
 }

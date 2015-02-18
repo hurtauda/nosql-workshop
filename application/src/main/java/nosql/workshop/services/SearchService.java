@@ -8,6 +8,7 @@ import nosql.workshop.model.Installation;
 import nosql.workshop.model.suggest.TownSuggest;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
@@ -18,8 +19,10 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.suggest.Suggest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,8 +80,21 @@ public class SearchService {
     }
 
     public List<TownSuggest> suggestTownName(String townName) {
-        // TODO codez le service
-        throw new UnsupportedOperationException();
+        SuggestResponse response = elasticSearchClient.prepareSuggest("towns")
+                .setSuggestText(townName)
+                .execute()
+                .actionGet();
+        List<TownSuggest> townSuggests =  new ArrayList<TownSuggest>();
+        SearchHit[] hits = response.getSuggest().getSuggestion("towns");
+        for(int i = 0; i<hits.length; i++) {
+            try {
+                townSuggests.add(objectMapper.readValue(hits[i].getSourceAsString(), TownSuggest.class));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return townSuggests;
+
     }
 
     public Double[] getTownLocation(String townName) {

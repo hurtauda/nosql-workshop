@@ -6,6 +6,7 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import static org.elasticsearch.common.xcontent.XContentFactory.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,7 +21,7 @@ import static nosql.workshop.batch.elasticsearch.util.ElasticSearchBatchUtils.de
 public class ImportTowns {
     public static void main(String[] args) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(ImportTowns.class.getResourceAsStream("/csv/towns_paysdeloire.csv")));
-             Client elasticSearchClient = new TransportClient().addTransportAddress(new InetSocketTransportAddress("localhost", 9300));) {
+             Client elasticSearchClient = new TransportClient().addTransportAddress(new InetSocketTransportAddress("localhost", 9300))) {
 
             checkIndexExists("towns", elasticSearchClient);
 
@@ -46,7 +47,19 @@ public class ImportTowns {
         String townName = split[1].replaceAll("\"", "");
         Double longitude = Double.valueOf(split[6]);
         Double latitude = Double.valueOf(split[7]);
+        Double[] coordinates = {longitude, latitude};
 
-        // TODO ajoutez le code permettant d'insérer la ville
+        try {
+            bulkRequest.add(elasticSearchClient.prepareIndex("twitter", "tweet", "1")
+                            .setSource(jsonBuilder()
+                                            .startObject()
+                                            .field("townName", townName)
+                                            .field("location", coordinates)
+                                            .endObject()))
+                            .execute()
+                            .actionGet();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
